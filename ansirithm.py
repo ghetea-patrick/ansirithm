@@ -46,10 +46,10 @@ class Reset(IntEnum):
 
 
 class CursorMovement(Enum):
-    UP = 'A'
-    DOWN = 'B'
-    RIGHT = 'C'
-    LEFT = 'D'
+    UP = "A"
+    DOWN = 'B"
+    RIGHT = "C"
+    LEFT = "D"
 
 
 class CursorVisibility(Enum):
@@ -58,8 +58,8 @@ class CursorVisibility(Enum):
 
 
 class LineNavigation(Enum):
-    NEXT = 'E'
-    PREV = 'F'
+    NEXT = "E"
+    PREV = "F"
 
 
 class Erasing(Enum):
@@ -70,9 +70,9 @@ class Erasing(Enum):
 
 
 class Teleportation(Enum):
-    HOME = 'H'
-    SAVE = 's'
-    RESTORE = 'u'
+    HOME = "H"
+    SAVE = "s"
+    RESTORE = "u"
 
 
 class Ansi:
@@ -101,7 +101,7 @@ class Ansi:
 
         output_sequences = []
         if styling_codes:
-            output_sequences.append(f"\033[{';'.join(styling_codes)}m")
+            output_sequences.append(f"\033[{";".join(styling_codes)}m")
 
         for code in action_codes:
             output_sequences.append(f"\033[{code}")
