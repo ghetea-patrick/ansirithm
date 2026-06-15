@@ -47,7 +47,7 @@ class Reset(IntEnum):
 
 class CursorMovement(Enum):
     UP = "A"
-    DOWN = 'B"
+    DOWN = "B"
     RIGHT = "C"
     LEFT = "D"
 
