@@ -11,6 +11,7 @@ class ForegroundColor(IntEnum):
     CYAN = 36
     WHITE = 37
 
+
 class BackgroundColor(IntEnum):
     BLACK = 40
     RED = 41
@@ -77,43 +78,37 @@ class Teleportation(Enum):
 
 class Ansi:
     @staticmethod
-    def ansi(*commands) -> str:
-        flattened_commands = []
-        for command in commands:
-            if isinstance(command, (list, tuple)):
-                flattened_commands.extend(command)
-            else:
-                flattened_commands.append(command)
+    def ansi(*codes) -> str:
+        flattened = []
 
-        flattened_commands = [
-            command for command in flattened_commands if command is not None
-        ]
-
-        if not flattened_commands:
+        for code in codes:
+            if isinstance(code, (list, tuple)):
+                flattened.extend(code)
+            elif code is not None:
+                flattened.append(code)
+        
+        if not flattened:
             return ""
+        
+        styling = [str(code) for code in flattened if isinstance(code ,int)]
+        action = [str(code) for code in flattened if isinstance(code, str)]
 
-        styling_codes = [
-            str(command) for command in flattened_commands if isinstance(command, int)
-        ]
-        action_codes = [
-            str(command) for command in flattened_commands if isinstance(command, str)
-        ]
+        sequence = []
 
-        output_sequences = []
-        if styling_codes:
-            output_sequences.append(f"\033[{";".join(styling_codes)}m")
-
-        for code in action_codes:
-            output_sequences.append(f"\033[{code}")
-
-        return "".join(output_sequences)
-
-    class _ResetContext:
+        if styling:
+            sequence.append(f"\033[{";".join(styling)}m")
+        
+        for code in action:
+            sequence.append(f"\033[{code}")
+        
+        return "".join(sequence)
+    
+    class _Reset:
         def __enter__(self):
             return Ansi.ansi
 
-        def __exit__(self, *exceptions):
+        def __exit__(self, *_):
             print(Ansi.ansi(Reset.RESET), end="")
 
-    reset = _ResetContext()
+    reset = _Reset()
     clear = "\033[2J\033[H"
