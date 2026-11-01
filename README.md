@@ -1,45 +1,38 @@
 # Ansirithm
 
-### A Python ANSI utility with slightly fewer terminal-related inconveniences.
+**A little color. A little cursor control. Much less escape-code archaeology.**
 
-Welcome to **Ansirithm**, a lightweight Python utility for generating ANSI escape sequences for terminal styling, cursor control, screen manipulation, and text decoration.
+Ansirithm is a lightweight Python utility for terminal styling, cursor control, screen manipulation, and text decoration. You get readable enums and a small sequence builder, so your application can say what it means without scattering mysterious escape strings through the code.
 
-Ansirithm provides a small collection of enums and helper functionality for constructing ANSI escape sequences without requiring raw escape-code strings throughout your application.
-
-Ansirithm provides several conveniences:
-
-- **Foreground colors** through `ForegroundColor`.
-- **Background colors** through `BackgroundColor`.
-- **Font styles** such as bold, faint, and italic.
-- **Text decorators** including underline, strike-through, and overline.
-- **Terminal effects** such as blinking, reverse video, and hidden text.
-- **Cursor movement** through directional ANSI sequences.
-- **Cursor visibility control** for hiding and showing the terminal cursor.
-- **Line navigation** for moving between terminal lines.
-- **Screen and line erasing** through standard ANSI erase sequences.
-- **Cursor teleportation** for home, save, and restore operations.
-- **Automatic ANSI sequence construction** through `Ansi.ansi()`.
-- **Context-managed reset behavior** through `Ansi.reset`.
-
-Ansirithm intentionally keeps ANSI terminal control explicit while providing readable names for otherwise mysterious numerical escape codes.
-
-It is designed for programmers who would rather write:
+If you'd rather write this:
 
 ```python
 Ansi.ansi(ForegroundColor.RED)
 ```
 
-than remember that red is apparently `31`.
+than remember that red is `31`, you're in the right place. The terminal can keep its secret numerical language; you can keep your afternoon.
 
-Because naturally terminals require a secret numerical language to change the color of text.
+[What it does](#what-it-does) · [Get started](#get-started) · [A quick example](#a-quick-example) · [How it fits together](#how-it-fits-together) · [Reference](#reference) · [Examples](#examples) · [Good to know](#good-to-know) · [Design notes](#design-notes)
 
----
+## What it does
 
-## 1. Installation
+- Sets foreground colors with `ForegroundColor` and background colors with `BackgroundColor`.
+- Applies bold, faint, and italic text through `Fonts`.
+- Adds underlines, double underlines, strike-through, and overlines with `Decorators`.
+- Builds blinking, reverse-video, and hidden-text effects through `Effects`.
+- Moves the cursor, changes its visibility, and navigates between terminal lines.
+- Erases the screen, scrollback, or part of a line.
+- Sends the cursor home and saves or restores its position with `Teleportation`.
+- Combines integer styling codes and string actions through `Ansi.ansi()`.
+- Accepts reusable lists and tuples, ignores `None`, and returns an empty string for empty input.
+- Resets text styling when a block ends through `Ansi.reset`, and supplies `Ansi.clear` for screen erasure followed by cursor home.
 
-Ansirithm uses Python's standard library and does not require external dependencies.
+## Get started
 
-Import the required classes from the Ansirithm module.
+> [!NOTE]
+> Ansirithm uses only Python's standard library. It generates standard ANSI escape sequences; the receiving terminal is responsible for understanding and displaying them.
+
+Import the classes you need from the module. Replace `ansirithm` with your installation's module path if it differs.
 
 ```python
 from ansirithm import (
@@ -58,23 +51,15 @@ from ansirithm import (
 )
 ```
 
-Replace `ansirithm` with the module path used by your installation.
-
-Ansirithm generates standard ANSI escape sequences that can be written directly to terminal output.
-
----
-
-## 2. ANSI Sequence Generation
-
-The primary interface for generating escape sequences is:
+The main interface is:
 
 ```python
 Ansi.ansi(*codes)
 ```
 
-The method accepts any number of ANSI style codes or action strings.
+It accepts any number of style codes or action strings and returns a string. Write that string to terminal output to apply it; constructing the string alone does not change the terminal.
 
-Example:
+## A quick example
 
 ```python
 print(
@@ -84,9 +69,9 @@ print(
 )
 ```
 
-This produces red text followed by a terminal style reset.
+You get red `Hello` text followed by a style reset. That final reset keeps the next line from accidentally joining the red-text club.
 
-Multiple codes can be combined in a single call.
+You can apply more than one style in the same call:
 
 ```python
 Ansi.ansi(
@@ -95,443 +80,29 @@ Ansi.ansi(
 )
 ```
 
-The resulting sequence applies both styles.
+This combines the red foreground and bold font style into one styling sequence.
 
----
+## How it fits together
 
-## 3. ANSI Code Categories
+### Styling codes and terminal actions
 
-Ansirithm separates ANSI codes into several categories according to their purpose.
+Ansirithm separates codes by the work they do:
 
-### 3.1 Styling Codes
+| Kind | Input | What the builder emits |
+| --- | --- | --- |
+| Text styling | Integer SGR values: foreground colors, background colors, fonts, decorators, effects, and resets. | One combined SGR escape sequence. |
+| Terminal actions | Strings for cursor movement, visibility, line navigation, erasing, and positioning. | A separate escape sequence for each action. |
 
-Styling codes are integer-based ANSI SGR values.
+SGR means Select Graphic Rendition: the ANSI mechanism for changing text attributes. The action commands use CSI, the Control Sequence Introducer used by these terminal operations.
 
-They include:
+When a call mixes styling and actions, the combined styling sequence comes first, followed by the action sequences in their string order. Integer styling values are joined with semicolons inside the single SGR sequence.
 
-- Foreground colors.
-- Background colors.
-- Fonts.
-- Decorations.
-- Effects.
-- Reset operations.
+> [!TIP]
+> Pass styling enum members directly to `Ansi.ansi()`. For terminal actions, pass the member's **`.value`**, as in `Ansi.ansi(CursorVisibility.SHOW.value)`. Ansirithm adds the escape prefix, so the action string contains the part after `ESC[`.
 
-These codes are combined into a single SGR escape sequence.
+### Combine styles in one sequence
 
-### 3.2 Action Codes
-
-Action codes are string-based ANSI escape sequences used for terminal operations such as:
-
-- Cursor movement.
-- Cursor visibility.
-- Line navigation.
-- Screen erasing.
-- Cursor positioning.
-
-These sequences are emitted individually.
-
----
-
-## 4. Foreground Colors
-
-The `ForegroundColor` enum provides standard ANSI foreground colors.
-
-| Color | ANSI Code |
-|---|---:|
-| `BLACK` | `30` |
-| `RED` | `31` |
-| `GREEN` | `32` |
-| `YELLOW` | `33` |
-| `BLUE` | `34` |
-| `MAGENTA` | `35` |
-| `CYAN` | `36` |
-| `WHITE` | `37` |
-
-### Example
-
-```python
-print(
-    Ansi.ansi(ForegroundColor.RED)
-    + "Red text"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
-Multiple styles can be combined:
-
-```python
-print(
-    Ansi.ansi(
-        ForegroundColor.GREEN,
-        Fonts.BOLD
-    )
-    + "Bold green text"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
-The color remains active until another ANSI style sequence changes it or the terminal is reset.
-
-Terminals, like humans, occasionally need to be explicitly told when something is over.
-
----
-
-## 5. Background Colors
-
-The `BackgroundColor` enum provides standard ANSI background colors.
-
-| Color | ANSI Code |
-|---|---:|
-| `BLACK` | `40` |
-| `RED` | `41` |
-| `GREEN` | `42` |
-| `YELLOW` | `43` |
-| `BLUE` | `44` |
-| `MAGENTA` | `45` |
-| `CYAN` | `46` |
-| `WHITE` | `47` |
-
-### Example
-
-```python
-print(
-    Ansi.ansi(BackgroundColor.BLUE)
-    + "Blue background"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
-Foreground and background colors can be combined.
-
-```python
-print(
-    Ansi.ansi(
-        ForegroundColor.WHITE,
-        BackgroundColor.BLUE
-    )
-    + "White on blue"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
----
-
-## 6. Fonts
-
-The `Fonts` enum provides common ANSI text styles.
-
-| Style | ANSI Code |
-|---|---:|
-| `BOLD` | `1` |
-| `FAINT` | `2` |
-| `ITALIC` | `3` |
-
-### Example
-
-```python
-print(
-    Ansi.ansi(Fonts.BOLD)
-    + "Bold text"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
-Multiple font-related styles may be supplied together.
-
-```python
-Ansi.ansi(
-    Fonts.BOLD,
-    Fonts.ITALIC
-)
-```
-
-Terminal support for individual styles may vary depending on the terminal emulator.
-
-ANSI is a standard.
-
-Terminal behavior is apparently more of a suggestion.
-
----
-
-## 7. Text Decorators
-
-The `Decorators` enum provides ANSI text decoration codes.
-
-| Decorator | ANSI Code |
-|---|---:|
-| `UNDERLINE` | `4` |
-| `DOUBLE_UNDERLINE` | `21` |
-| `STRIKE` | `9` |
-| `OVERLINE` | `53` |
-
-### Example
-
-```python
-print(
-    Ansi.ansi(Decorators.UNDERLINE)
-    + "Underlined text"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
-Decorators can be combined with colors and fonts.
-
-```python
-print(
-    Ansi.ansi(
-        ForegroundColor.CYAN,
-        Fonts.BOLD,
-        Decorators.UNDERLINE
-    )
-    + "Styled text"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
----
-
-## 8. Terminal Effects
-
-The `Effects` enum provides ANSI terminal effects.
-
-| Effect | ANSI Code |
-|---|---:|
-| `BLINK` | `5` |
-| `REVERSE` | `7` |
-| `HIDDEN` | `8` |
-
-### Example
-
-```python
-print(
-    Ansi.ansi(Effects.REVERSE)
-    + "Reverse video"
-    + Ansi.ansi(Reset.RESET)
-)
-```
-
-Blinking behavior depends on terminal support.
-
-The `HIDDEN` effect is commonly used for concealing terminal text, although terminal behavior can vary.
-
----
-
-## 9. Reset
-
-The `Reset` enum currently provides a single reset operation.
-
-| Operation | ANSI Code |
-|---|---:|
-| `RESET` | `0` |
-
-Use it to return terminal styling to its default state.
-
-```python
-print(
-    Ansi.ansi(ForegroundColor.RED)
-    + "Red"
-    + Ansi.ansi(Reset.RESET)
-    + " Normal"
-)
-```
-
-The reset sequence prevents styles from unintentionally affecting subsequent output.
-
-This is particularly important when writing reusable terminal applications.
-
-Otherwise your entire terminal may suddenly become red because one line of code got ambitious.
-
----
-
-## 10. Cursor Movement
-
-The `CursorMovement` enum provides directional cursor movement sequences.
-
-| Direction | ANSI Command |
-|---|---|
-| `UP` | `A` |
-| `DOWN` | `B` |
-| `RIGHT` | `C` |
-| `LEFT` | `D` |
-
-These commands are represented as ANSI CSI sequences.
-
-### Example
-
-```python
-print(
-    Ansi.ansi(
-        CursorMovement.UP.value
-    )
-)
-```
-
-The cursor movement command itself does not specify a distance.
-
-ANSI interprets an omitted movement parameter according to its standard default behavior.
-
----
-
-## 11. Cursor Visibility
-
-The `CursorVisibility` enum controls whether the terminal cursor is visible.
-
-| Operation | ANSI Sequence |
-|---|---|
-| `HIDE` | `?25l` |
-| `SHOW` | `?25h` |
-
-### Hide the Cursor
-
-```python
-print(
-    Ansi.ansi(
-        CursorVisibility.HIDE.value
-    ),
-    end=""
-)
-```
-
-### Show the Cursor
-
-```python
-print(
-    Ansi.ansi(
-        CursorVisibility.SHOW.value
-    ),
-    end=""
-)
-```
-
-Cursor visibility control is useful for terminal interfaces, animations, progress displays, and other applications where a blinking cursor wandering around the screen would be less than helpful.
-
----
-
-## 12. Line Navigation
-
-The `LineNavigation` enum provides ANSI sequences for moving between terminal lines.
-
-| Operation | ANSI Command |
-|---|---|
-| `NEXT` | `E` |
-| `PREV` | `F` |
-
-### Example
-
-```python
-print(
-    Ansi.ansi(
-        LineNavigation.NEXT.value
-    )
-)
-```
-
-The commands are emitted as ANSI CSI sequences by `Ansi.ansi()`.
-
----
-
-## 13. Erasing
-
-The `Erasing` enum provides ANSI commands for clearing terminal content.
-
-| Operation | ANSI Command |
-|---|---|
-| `SCREEN` | `2J` |
-| `SCROLL` | `3J` |
-| `LINE` | `K` |
-| `TO_START` | `1K` |
-
-### Clear the Screen
-
-```python
-print(
-    Ansi.ansi(
-        Erasing.SCREEN.value
-    ),
-    end=""
-)
-```
-
-### Clear the Current Line
-
-```python
-print(
-    Ansi.ansi(
-        Erasing.LINE.value
-    ),
-    end=""
-)
-```
-
-### Clear to the Start of the Line
-
-```python
-print(
-    Ansi.ansi(
-        Erasing.TO_START.value
-    ),
-    end=""
-)
-```
-
-These operations allow terminal applications to manipulate visible output without relying exclusively on ordinary newline-based printing.
-
----
-
-## 14. Teleportation
-
-The `Teleportation` enum provides cursor-positioning and cursor-state commands.
-
-| Operation | ANSI Command |
-|---|---|
-| `HOME` | `H` |
-| `SAVE` | `s` |
-| `RESTORE` | `u` |
-
-### Home
-
-The `HOME` sequence moves the cursor to the terminal's home position.
-
-```python
-print(
-    Ansi.ansi(
-        Teleportation.HOME.value
-    ),
-    end=""
-)
-```
-
-### Save Position
-
-```python
-print(
-    Ansi.ansi(
-        Teleportation.SAVE.value
-    ),
-    end=""
-)
-```
-
-### Restore Position
-
-```python
-print(
-    Ansi.ansi(
-        Teleportation.RESTORE.value
-    ),
-    end=""
-)
-```
-
-Saving and restoring cursor position can be useful when temporarily writing terminal output and then returning to the previous cursor location.
-
-A surprisingly useful ability for something that sounds like a science-fiction feature.
-
----
-
-## 15. Combining Styles
-
-Multiple integer-based ANSI styles can be passed to `Ansi.ansi()` at once.
+Pass several integer codes together when you want a reusable style:
 
 ```python
 style = Ansi.ansi(
@@ -548,25 +119,17 @@ print(
 )
 ```
 
-All integer codes are combined into a single ANSI SGR sequence.
-
-Conceptually, the generated sequence is equivalent to:
+All four values become one SGR sequence, conceptually:
 
 ```text
 ESC[33;44;1;4m
 ```
 
-followed by the provided text and then a reset sequence.
+The text follows that sequence, and the explicit reset ends the styling. You get yellow, bold, underlined text on a blue background without assembling the raw control string yourself.
 
-This allows complex terminal styling without manually constructing ANSI escape strings.
+### Reuse lists and tuples
 
----
-
-## 16. Nested Code Collections
-
-`Ansi.ansi()` also accepts lists and tuples.
-
-For example:
+`Ansi.ansi()` accepts lists and tuples as well as individual codes:
 
 ```python
 styles = [
@@ -582,7 +145,7 @@ print(
 )
 ```
 
-Nested collections can also be supplied alongside individual codes.
+You can also combine a collection with individual arguments:
 
 ```python
 styles = [
@@ -596,17 +159,11 @@ Ansi.ansi(
 )
 ```
 
-Lists and tuples are flattened by one level before processing.
+Lists and tuples are flattened **one level** before processing. That lets you keep a shared collection of theme values and add an extra decoration at the call site; it is not recursive flattening of arbitrarily deep collections.
 
-This makes it possible to construct reusable style collections.
+### Leave optional styles as `None`
 
----
-
-## 17. Ignoring `None`
-
-`Ansi.ansi()` ignores `None` values.
-
-This allows conditional styling to be constructed conveniently.
+When a style is conditional, you can pass `None` for the unused part:
 
 ```python
 color = ForegroundColor.RED
@@ -619,15 +176,11 @@ sequence = Ansi.ansi(
 )
 ```
 
-The `None` value is simply omitted.
+The builder omits `optional_style` and keeps the red foreground and bold font. You don't need a separate formatting branch for every combination of optional attributes.
 
-This is useful when building terminal styles dynamically.
+### Let empty input stay empty
 
----
-
-## 18. Empty ANSI Sequences
-
-If no usable codes are supplied, `Ansi.ansi()` returns an empty string.
+Calling the builder without usable codes returns an empty string:
 
 ```python
 Ansi.ansi()
@@ -639,40 +192,30 @@ Result:
 ""
 ```
 
-Likewise:
+Empty collections and `None` behave the same way:
 
 ```python
 Ansi.ansi(None, [], ())
 ```
 
-produces an empty string.
+This also produces `""`, so an empty style can safely participate in string concatenation without special handling.
 
-This allows ANSI sequence generation to safely participate in conditional formatting without requiring special handling for every empty case.
+### Reset styling when a block ends
 
----
-
-## 19. The Reset Context Manager
-
-Ansirithm provides a small context manager through:
+The reset helper is exposed through:
 
 ```python
 Ansi.reset
 ```
 
-The object can be used with Python's `with` statement.
+Use the context manager with the callable form shown here:
 
 ```python
 with Ansi.reset():
     print("Styled output")
 ```
 
-The context manager's `__enter__()` method returns `Ansi.ansi`.
-
-When the context exits, the reset sequence is printed automatically.
-
-The intended purpose is to make temporary terminal styling easier to manage.
-
-### Example
+Its `__enter__()` method returns `Ansi.ansi`, so you can bind the sequence builder to a local name:
 
 ```python
 with Ansi.reset() as ansi:
@@ -685,52 +228,521 @@ with Ansi.reset() as ansi:
     )
 ```
 
-After the block completes, Ansirithm emits:
+When the context exits, it prints the reset sequence automatically:
 
 ```text
 ESC[0m
 ```
 
-This ensures the terminal returns to its default styling state.
+That restores the default text styling after temporary formatting. The plain `"Styled output"` example shows the context-manager structure; the second example actually applies a style inside it.
 
-No cleanup code required.
+> [!IMPORTANT]
+> A text reset restores **text attributes**. It does not show a hidden cursor or restore its position. Pair cursor hiding with `CursorVisibility.SHOW.value` when you're finished; a `finally` block is useful when the intervening work can raise an exception.
 
-Because forgetting to reset terminal colors is how innocent shell sessions become crime scenes.
+### Clear the screen and go home
 
----
-
-## 20. Clearing the Terminal
-
-Ansirithm provides a predefined `clear` sequence.
+Use the predefined clear sequence:
 
 ```python
 Ansi.clear
 ```
 
-The value is:
+Conceptually, it contains these two commands:
 
 ```text
 ESC[2J ESC[H
 ```
 
-In Python:
+Write it without adding a newline:
 
 ```python
 print(Ansi.clear, end="")
 ```
 
-This performs two operations:
+This first erases the screen and then moves the cursor to the home position. In Python string notation, the combined sequence is `"\x1b[2J\x1b[H"`.
 
-1. Clears the terminal screen.
-2. Moves the cursor to the home position.
+## Reference
 
-The sequence can therefore be used as a convenient terminal-clearing operation.
+### Foreground colors
 
----
+`ForegroundColor` supplies the eight standard ANSI foreground colors. Pass these enum members directly to the builder.
 
-## 21. Complete Example: Styled Terminal Output
+| Color | ANSI Code |
+|---|---:|
+| `BLACK` | `30` |
+| `RED` | `31` |
+| `GREEN` | `32` |
+| `YELLOW` | `33` |
+| `BLUE` | `34` |
+| `MAGENTA` | `35` |
+| `CYAN` | `36` |
+| `WHITE` | `37` |
 
-The following example demonstrates colors, fonts, decorations, resetting, and cursor control.
+For a red message:
+
+```python
+print(
+    Ansi.ansi(ForegroundColor.RED)
+    + "Red text"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+For bold green text:
+
+```python
+print(
+    Ansi.ansi(
+        ForegroundColor.GREEN,
+        Fonts.BOLD
+    )
+    + "Bold green text"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+The foreground color stays active until another style sequence changes it or a reset clears it. Terminals appreciate a clear ending.
+
+### Background colors
+
+`BackgroundColor` supplies the corresponding eight background colors:
+
+| Color | ANSI Code |
+|---|---:|
+| `BLACK` | `40` |
+| `RED` | `41` |
+| `GREEN` | `42` |
+| `YELLOW` | `43` |
+| `BLUE` | `44` |
+| `MAGENTA` | `45` |
+| `CYAN` | `46` |
+| `WHITE` | `47` |
+
+Set a blue background:
+
+```python
+print(
+    Ansi.ansi(BackgroundColor.BLUE)
+    + "Blue background"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+Or combine it with a white foreground:
+
+```python
+print(
+    Ansi.ansi(
+        ForegroundColor.WHITE,
+        BackgroundColor.BLUE
+    )
+    + "White on blue"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+### Fonts
+
+`Fonts` supplies common text-style attributes:
+
+| Style | ANSI Code |
+|---|---:|
+| `BOLD` | `1` |
+| `FAINT` | `2` |
+| `ITALIC` | `3` |
+
+Apply bold text:
+
+```python
+print(
+    Ansi.ansi(Fonts.BOLD)
+    + "Bold text"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+Or request several font attributes together:
+
+```python
+Ansi.ansi(
+    Fonts.BOLD,
+    Fonts.ITALIC
+)
+```
+
+> [!NOTE]
+> Individual styles depend on the terminal emulator. Faint and italic text, in particular, may look different or be unsupported. ANSI has a standard; terminals still bring their own opinions.
+
+### Text decorators
+
+`Decorators` covers these text decorations:
+
+| Decorator | ANSI Code |
+|---|---:|
+| `UNDERLINE` | `4` |
+| `DOUBLE_UNDERLINE` | `21` |
+| `STRIKE` | `9` |
+| `OVERLINE` | `53` |
+
+Underline a message:
+
+```python
+print(
+    Ansi.ansi(Decorators.UNDERLINE)
+    + "Underlined text"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+Or combine a decorator with a color and font style:
+
+```python
+print(
+    Ansi.ansi(
+        ForegroundColor.CYAN,
+        Fonts.BOLD,
+        Decorators.UNDERLINE
+    )
+    + "Styled text"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+### Terminal effects
+
+`Effects` supplies blinking, reverse video, and hidden text:
+
+| Effect | ANSI Code |
+|---|---:|
+| `BLINK` | `5` |
+| `REVERSE` | `7` |
+| `HIDDEN` | `8` |
+
+For reverse video:
+
+```python
+print(
+    Ansi.ansi(Effects.REVERSE)
+    + "Reverse video"
+    + Ansi.ansi(Reset.RESET)
+)
+```
+
+Blinking depends on terminal support. `HIDDEN` is commonly used to conceal terminal text, but the receiving terminal still decides how that effect behaves.
+
+### Reset
+
+`Reset` currently has one member:
+
+| Operation | ANSI Code |
+|---|---:|
+| `RESET` | `0` |
+
+Use it to return text styling to its default state:
+
+```python
+print(
+    Ansi.ansi(ForegroundColor.RED)
+    + "Red"
+    + Ansi.ansi(Reset.RESET)
+    + " Normal"
+)
+```
+
+The reset stops your styling from leaking into later output, which matters especially when your code is part of a reusable terminal application.
+
+### Cursor movement
+
+`CursorMovement` provides directional CSI commands:
+
+| Direction | ANSI Command |
+|---|---|
+| `UP` | `A` |
+| `DOWN` | `B` |
+| `RIGHT` | `C` |
+| `LEFT` | `D` |
+
+For example:
+
+```python
+print(
+    Ansi.ansi(
+        CursorMovement.UP.value
+    )
+)
+```
+
+The enum value supplies the direction without a distance. When the numeric parameter is omitted, the terminal applies the ANSI default. You can build a parameterized action string, such as `f"2{CursorMovement.UP.value}"`, to request two rows explicitly.
+
+### Cursor visibility
+
+`CursorVisibility` lets you hide or show the cursor:
+
+| Operation | ANSI Sequence |
+|---|---|
+| `HIDE` | `?25l` |
+| `SHOW` | `?25h` |
+
+Hide it:
+
+```python
+print(
+    Ansi.ansi(
+        CursorVisibility.HIDE.value
+    ),
+    end=""
+)
+```
+
+Show it again:
+
+```python
+print(
+    Ansi.ansi(
+        CursorVisibility.SHOW.value
+    ),
+    end=""
+)
+```
+
+This is useful for terminal interfaces, animations, and progress displays where a blinking cursor would otherwise wander through the scenery.
+
+### Line navigation
+
+`LineNavigation` provides commands for moving between terminal lines:
+
+| Operation | ANSI Command |
+|---|---|
+| `NEXT` | `E` |
+| `PREV` | `F` |
+
+For example:
+
+```python
+print(
+    Ansi.ansi(
+        LineNavigation.NEXT.value
+    )
+)
+```
+
+`Ansi.ansi()` emits these as CSI sequences. `NEXT` moves to the start of a following line and `PREV` to the start of a preceding line; a numeric prefix supplies the count.
+
+### Erasing
+
+`Erasing` removes terminal content:
+
+| Operation | ANSI Command |
+|---|---|
+| `SCREEN` | `2J` |
+| `SCROLL` | `3J` |
+| `LINE` | `K` |
+| `TO_START` | `1K` |
+
+| Member | Area affected |
+| --- | --- |
+| `SCREEN` | The screen. |
+| `SCROLL` | Scrollback. |
+| `LINE` | From the cursor to the end of the current line. |
+| `TO_START` | From the start of the current line to the cursor. |
+
+Clear the screen:
+
+```python
+print(
+    Ansi.ansi(
+        Erasing.SCREEN.value
+    ),
+    end=""
+)
+```
+
+Clear the rest of the current line:
+
+```python
+print(
+    Ansi.ansi(
+        Erasing.LINE.value
+    ),
+    end=""
+)
+```
+
+Clear back to the start of the line:
+
+```python
+print(
+    Ansi.ansi(
+        Erasing.TO_START.value
+    ),
+    end=""
+)
+```
+
+These actions let you update visible output without treating every change as another printed line.
+
+> [!TIP]
+> Erasing a line does not move the cursor to its beginning. Combine erasing with cursor movement when you need both. `Ansi.clear` requests screen erasure and home, while `Erasing.SCROLL` is a separate scrollback operation.
+
+### Teleportation
+
+`Teleportation` groups cursor positioning and position-storage commands. No science-fiction equipment required.
+
+| Operation | ANSI Command |
+|---|---|
+| `HOME` | `H` |
+| `SAVE` | `s` |
+| `RESTORE` | `u` |
+
+Move to the terminal's home position:
+
+```python
+print(
+    Ansi.ansi(
+        Teleportation.HOME.value
+    ),
+    end=""
+)
+```
+
+Save the current cursor position:
+
+```python
+print(
+    Ansi.ansi(
+        Teleportation.SAVE.value
+    ),
+    end=""
+)
+```
+
+Restore the saved position:
+
+```python
+print(
+    Ansi.ansi(
+        Teleportation.RESTORE.value
+    ),
+    end=""
+)
+```
+
+Saving and restoring is useful when you temporarily write somewhere else and then return to the previous cursor location. Support for position save/restore can vary between terminals.
+
+### API at a glance
+
+The complete member list is below. For the action enums, use `.value` when passing a member to `Ansi.ansi()`.
+
+#### Foreground Colors
+
+```python
+ForegroundColor.BLACK
+ForegroundColor.RED
+ForegroundColor.GREEN
+ForegroundColor.YELLOW
+ForegroundColor.BLUE
+ForegroundColor.MAGENTA
+ForegroundColor.CYAN
+ForegroundColor.WHITE
+```
+
+#### Background Colors
+
+```python
+BackgroundColor.BLACK
+BackgroundColor.RED
+BackgroundColor.GREEN
+BackgroundColor.YELLOW
+BackgroundColor.BLUE
+BackgroundColor.MAGENTA
+BackgroundColor.CYAN
+BackgroundColor.WHITE
+```
+
+#### Fonts
+
+```python
+Fonts.BOLD
+Fonts.FAINT
+Fonts.ITALIC
+```
+
+#### Decorators
+
+```python
+Decorators.UNDERLINE
+Decorators.DOUBLE_UNDERLINE
+Decorators.STRIKE
+Decorators.OVERLINE
+```
+
+#### Effects
+
+```python
+Effects.BLINK
+Effects.REVERSE
+Effects.HIDDEN
+```
+
+#### Reset
+
+```python
+Reset.RESET
+```
+
+#### Cursor Movement
+
+```python
+CursorMovement.UP
+CursorMovement.DOWN
+CursorMovement.RIGHT
+CursorMovement.LEFT
+```
+
+#### Cursor Visibility
+
+```python
+CursorVisibility.HIDE
+CursorVisibility.SHOW
+```
+
+#### Line Navigation
+
+```python
+LineNavigation.NEXT
+LineNavigation.PREV
+```
+
+#### Erasing
+
+```python
+Erasing.SCREEN
+Erasing.SCROLL
+Erasing.LINE
+Erasing.TO_START
+```
+
+#### Teleportation
+
+```python
+Teleportation.HOME
+Teleportation.SAVE
+Teleportation.RESTORE
+```
+
+#### Main Interface
+
+```python
+Ansi.ansi(*codes)
+Ansi.reset
+Ansi.clear
+```
+
+## Examples
+
+### Styled terminal output
+
+This combines foreground colors, background colors, fonts, decorations, and explicit resets:
 
 ```python
 from ansirithm import (
@@ -769,18 +781,11 @@ print(
 print("Normal terminal output.")
 ```
 
-The program demonstrates the basic Ansirithm workflow:
+The workflow is straightforward: construct a style, print the text, reset the style, and continue with normal output. The cursor-control example is separate below.
 
-1. Construct an ANSI style.
-2. Print styled text.
-3. Reset the terminal style.
-4. Continue with normal output.
+### Cursor control
 
----
-
-## 22. Complete Example: Cursor Control
-
-The following example demonstrates cursor visibility, screen clearing, and cursor positioning.
+This example hides the cursor, erases the screen, moves home, prints a message, and restores visibility:
 
 ```python
 from ansirithm import (
@@ -821,13 +826,11 @@ print(
 )
 ```
 
-This demonstrates how Ansirithm can be used for simple terminal interfaces and screen-based applications.
+It shows the basic building blocks for a simple terminal interface or screen-based application. If you add work that can fail between `HIDE` and `SHOW`, put the visibility restoration in a `finally` block.
 
----
+### Dynamic styling and reusable themes
 
-## 23. Complete Example: Dynamic Styling
-
-Because `Ansi.ansi()` accepts collections and optional values, styles can be assembled dynamically.
+Collections and optional values let you assemble a style dynamically:
 
 ```python
 from ansirithm import (
@@ -856,9 +859,9 @@ print(
 )
 ```
 
-This approach makes it possible to construct reusable terminal themes.
+Here, `Ansi.ansi(0)` uses the numeric SGR reset value directly. `Ansi.ansi(Reset.RESET)` expresses the same reset with a readable enum name.
 
-For example:
+You can also build named styles once and reuse them throughout an application:
 
 ```python
 SUCCESS = Ansi.ansi(
@@ -876,175 +879,9 @@ INFO = Ansi.ansi(
 )
 ```
 
-These styles can then be reused throughout an application.
+### A compact greeting
 
----
-
-## 24. API Summary
-
-### Foreground Colors
-
-```python
-ForegroundColor.BLACK
-ForegroundColor.RED
-ForegroundColor.GREEN
-ForegroundColor.YELLOW
-ForegroundColor.BLUE
-ForegroundColor.MAGENTA
-ForegroundColor.CYAN
-ForegroundColor.WHITE
-```
-
-### Background Colors
-
-```python
-BackgroundColor.BLACK
-BackgroundColor.RED
-BackgroundColor.GREEN
-BackgroundColor.YELLOW
-BackgroundColor.BLUE
-BackgroundColor.MAGENTA
-BackgroundColor.CYAN
-BackgroundColor.WHITE
-```
-
-### Fonts
-
-```python
-Fonts.BOLD
-Fonts.FAINT
-Fonts.ITALIC
-```
-
-### Decorators
-
-```python
-Decorators.UNDERLINE
-Decorators.DOUBLE_UNDERLINE
-Decorators.STRIKE
-Decorators.OVERLINE
-```
-
-### Effects
-
-```python
-Effects.BLINK
-Effects.REVERSE
-Effects.HIDDEN
-```
-
-### Reset
-
-```python
-Reset.RESET
-```
-
-### Cursor Movement
-
-```python
-CursorMovement.UP
-CursorMovement.DOWN
-CursorMovement.RIGHT
-CursorMovement.LEFT
-```
-
-### Cursor Visibility
-
-```python
-CursorVisibility.HIDE
-CursorVisibility.SHOW
-```
-
-### Line Navigation
-
-```python
-LineNavigation.NEXT
-LineNavigation.PREV
-```
-
-### Erasing
-
-```python
-Erasing.SCREEN
-Erasing.SCROLL
-Erasing.LINE
-Erasing.TO_START
-```
-
-### Teleportation
-
-```python
-Teleportation.HOME
-Teleportation.SAVE
-Teleportation.RESTORE
-```
-
-### Main Interface
-
-```python
-Ansi.ansi(*codes)
-Ansi.reset
-Ansi.clear
-```
-
----
-
-## 25. Design Philosophy
-
-Ansirithm is designed to provide a readable Python interface over standard ANSI terminal escape sequences.
-
-The library deliberately represents ANSI codes using named enums rather than requiring users to memorize numerical constants and control sequences.
-
-The architecture separates terminal functionality into logical categories:
-
-- `ForegroundColor` handles text color.
-- `BackgroundColor` handles background color.
-- `Fonts` handles font-style attributes.
-- `Decorators` handles text decorations.
-- `Effects` handles terminal effects.
-- `Reset` handles style reset operations.
-- `CursorMovement` handles directional cursor movement.
-- `CursorVisibility` handles cursor visibility.
-- `LineNavigation` handles line-based cursor navigation.
-- `Erasing` handles terminal content removal.
-- `Teleportation` handles cursor positioning and position storage.
-
-`Ansi.ansi()` then provides the common mechanism for converting these values into actual ANSI escape sequences.
-
-Ansirithm does not attempt to replace terminal emulators or implement a terminal itself.
-
-It simply makes the existing ANSI control system less unpleasant to use.
-
-Which, frankly, is already a respectable contribution to civilization.
-
----
-
-## 26. Limitations
-
-Ansirithm is intentionally lightweight and currently provides only a subset of ANSI terminal functionality.
-
-The current implementation does not provide:
-
-- 256-color support.
-- True-color RGB sequences.
-- Cursor positioning with arbitrary row and column parameters.
-- Terminal input handling.
-- Keyboard event parsing.
-- Terminal size detection.
-- Platform-specific console APIs.
-- Automatic terminal capability detection.
-- Automatic ANSI disabling for unsupported terminals.
-- Full ANSI/ECMA-48 sequence coverage.
-
-Terminal support for individual effects may vary between terminal emulators.
-
-The library generates ANSI sequences but does not verify whether the receiving terminal supports them.
-
----
-
-## 27. Final Example
-
-A compact Ansirithm program can therefore look like this:
+For a small program, the same pattern fits comfortably in one place:
 
 ```python
 from ansirithm import (
@@ -1068,14 +905,38 @@ print(
 )
 ```
 
-Output:
+Visible text:
 
 ```text
 Hello from Ansirithm
 ```
 
-The terminal handles the actual styling through ANSI escape sequences.
+The terminal applies the cyan foreground, bold font, and underline from the emitted ANSI sequences. The plain-text output above shows the characters, not their visual formatting.
 
-Ansirithm simply provides names for the machinery.
+## Good to know
 
-Because apparently `\033[36;1;4m` was considered a perfectly reasonable user interface.
+> [!IMPORTANT]
+> Ansirithm generates sequences; it does not check the receiving terminal's capabilities or disable ANSI automatically. Redirected output still contains those sequences, so choose when to add styling if the same output also goes to a file.
+
+The current implementation covers a subset of ANSI terminal functionality. It does not provide:
+
+- 256-color support.
+- True-color RGB sequences.
+- A dedicated arbitrary row-and-column cursor-positioning interface.
+- Terminal input handling.
+- Keyboard event parsing.
+- Terminal size detection.
+- Platform-specific console APIs.
+- Automatic terminal capability detection.
+- Automatic ANSI disabling for unsupported terminals.
+- Full ANSI/ECMA-48 sequence coverage.
+
+Effect support varies between terminal emulators, especially for blinking, faint text, double underlines, overlines, and cursor-position save/restore. The library does not verify that a requested effect is supported.
+
+## Design notes
+
+Ansirithm keeps terminal control explicit. Named enums make the codes readable, and `Ansi.ansi()` is the shared mechanism that turns those values into actual escape strings.
+
+Each category has a specific job: `ForegroundColor` and `BackgroundColor` select colors; `Fonts`, `Decorators`, and `Effects` set text attributes; `Reset` ends those attributes; `CursorMovement`, `CursorVisibility`, and `LineNavigation` control the cursor; `Erasing` removes content; and `Teleportation` handles home, save, and restore operations.
+
+The utility stays focused on that translation layer rather than implementing a terminal emulator. You retain the ANSI control system, with readable names attached to the machinery. A respectable improvement over treating `\033[36;1;4m` as a friendly user interface.
